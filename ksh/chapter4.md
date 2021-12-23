@@ -56,6 +56,69 @@ ex) `@Emurated`,  `@Temporal` , `@Lob` , `@Transient` , `@Access` ....
 
 
 
+아래에서 `@Transient` 어노테이션만 잠깐 짚고 넘어가겠다.
+
+### @Transient
+
+- 참고자료 [JPA에서 @Transient어노테이션이 존재하는 이유](https://gmoon92.github.io/jpa/2019/09/29/what-is-the-transient-annotation-used-for-in-jpa.html)
+- 해당 어노테이션이 붙은 필드는 매핑되지 않는다. 
+- 사용할 때
+  - 데이터베이스에 저장하지도 않고, 조회하지도 않는다. 객체에 임시로 어떤 값을 보관하고 싶을 때 사용한다.
+  - 비즈니스 로직에서만 필요하고, 굳이 DB에 넣어 관리할 필요가 없는 데이터를 위한 어노테이션. ex) 비밀번호 재입력 확인 boolean값
+
+
+
+아래는 테스트로 짜본 코드인데 적절한 예제는 아닌 것 같기도 하다. 추후 수정하거나 자료를 추가하거나 하겠다.
+
+```java
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "TEAM")
+public class Team {
+    //
+    @Id
+    @GeneratedValue(generator = "USER_GENERATOR")
+    @GenericGenerator(name = "USER_GENERATOR", strategy = "uuid")
+    private String id;
+    private String name;
+    @Lob
+    private String description;
+    @Temporal(TemporalType.DATE)
+    private Date date;
+
+    @Transient
+    private List<Member> members;
+}
+
+```
+
+
+
+아래는 @Transient 어노테이션을 테스트하기 위한 테스트코드이다. Team.getMembers() 는 아무것도 조회되지 않고, null로 나오는 것을 확인할 수 있다.
+
+
+
+```java
+@DisplayName("Transient어노테이션 확인")
+@Test
+void find() {
+    //
+    Team team = Team.sample();
+    String id = teamLogic.register(team);
+
+    Team found = teamLogic.findById(id);
+
+    assertTrue(!CollectionUtils.isEmpty(team.getMembers()));
+    assertNull(found.getMembers());
+
+}
+```
+
+
+
 ---
 
 
