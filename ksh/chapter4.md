@@ -119,6 +119,16 @@ void find() {
 
 
 
+DB도 확인해보면 아래와 같이 저장된다. 매핑되지 않음을 확인할 수 있다.
+
+![image-20211223201742070](image/image-20211223201742070.png)
+
+클래스다이어그램을 확인해보니 매핑되지는 않지만, 이렇게 연관관계만 이어주는 용도로도 사용할 수 있겠다.
+
+<img src="https://s3.us-west-2.amazonaws.com/secure.notion-static.com/0354a71c-a867-415b-baaf-ca142dcc9663/Untitled.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIAT73L2G45EIPT3X45%2F20211223%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20211223T111801Z&X-Amz-Expires=86400&X-Amz-Signature=b3a45f99e818290b41ddcf1d045298185a31775fa478724867c67133107b569f&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22Untitled.png%22&x-id=GetObject" alt="img" style="zoom:50%;" />
+
+
+
 ---
 
 
