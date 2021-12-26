@@ -373,6 +373,33 @@ public class Member {
 
 ## 5.3.2. 일대다 컬렉션 조회
 
+데이터 입력 로직 수정-team을 조회해서 출력되게 하려면 team1에도 Member를 넣어서 persist해주어야 했다
+
+```java
+public static void testSave(EntityManager em) {
+        //
+        //팀1 저장
+        Team team1 = new Team("team1", "팀1");
+
+        //회원1
+        Member member1 = new Member("member1", "회원1", team1);
+        em.persist(member1);
+        //회원2
+        Member member2 = new Member("member2", "회원2", team1);
+        em.persist(member2);
+
+        // 이걸 추가해야한다고??
+        List<Member> members = new ArrayList<>();
+        members.add(member1);
+        members.add(member2);
+        team1.setMembers(members);
+        em.persist(team1);
+
+    }
+```
+
+출력로직
+
 ```java
 public static void biDirection(EntityManager em) {
     //
@@ -386,3 +413,232 @@ public static void biDirection(EntityManager em) {
     }
 }
 ```
+
+> 출력결과
+>
+>
+> ![Untitled](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/445a278d-dfa4-4d9a-abe8-d01291f3a8a6/Untitled.png)
+>
+
+# 5.4 연관관계의 주인
+
+> 객체에는 양방향 연관관계라는 것이 없다 - 흉내만 낼 뿐
+>
+>
+> 테이블은 외래 키 하나만으로 양방향 연관관계를 맺는다.
+>
+> ⇒ 이런 차이로 인해 JPA는 두 객체 연관관계 중 하나를 정해서 테이블의 외래 키를 관리 해야 하는데 이것을 `연관관계의 주인(Owner)`라고 한다.
+>
+
+## 5.4.1 양방향 매핑의 규칙 : 연관관계의 주인
+
+> 연관관계의 주인만이 DB연관관계와 매핑되고 외래 키를 관리(CUD)할 수 있다.
+>
+>
+> 주인이 아닌 쪽은 읽기(R)만 할 수 있다.
+>
+> ⇒ 연관관계의 주인을 정한다는 것은 외래 키의 관리자를 선택하는 것이다.
+>
+
+Member entity
+
+```java
+public class Member {
+    //연관관계 매핑
+    @ManyToOne
+    @JoinColumn(name = "TEAM_ID")
+    private Team team;
+```
+
+Team entity
+
+```java
+public class Team {
+		//
+    @OneToMany(mappedBy = "team")
+    private List<Member> members = new ArrayList<>();
+```
+
+> 위의 경우 Member entity를 주인으로 선택하면 Member 테이블의 team_id 외래 키를 관리하면 된다.
+>
+>
+> 반면 Team을 주인으로 선택할 경우 물리적으로 전혀 다른 테이블의 외래 키를 관리해야 한다.
+>
+
+## 5.4.2 연관관계의 주인은 외래 키가 있는 곳
+
+> 연관관계의 주인만 DB연관관계와 매핑되고 외래키를 관리할 수 있다.
+>
+>
+> 반대편은 읽기만 가능하다.
+>
+
+![Untitled](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/4fe62713-88d1-4668-bf40-0f7d52dc3b84/Untitled.png)
+
+<aside>
+💡 DB에서 테이블의 관계는 항상 다 쪽이 외래 키를 가진다.
+
+다 쪽인 @ManyToOne은 항상 연관관계의 주인이 되므로 mappedBy를 설정할 수 없다.
+
+</aside>
+
+# 5.5 양방향 연관관계 저장
+
+> Team에 Member를 별도로 저장하지 않아도 Member에서 저장한 Team값으로 인해 Member테이블에는 Team이 저장된다.
+>
+
+입력
+
+![Untitled](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/bde43116-8ba7-4053-be4c-57999ae4f568/Untitled.png)
+
+출력
+
+![Untitled](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/a6549244-1596-42c3-9f6d-9ad967db5633/Untitled.png)
+
+> 실행 결과
+>
+>
+> ![Untitled](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/3f12e243-4990-45cb-8818-db82dcd6197a/Untitled.png)
+>
+
+# 5.6 양방향 연관관계의 주의점
+
+> 양방향 관계를 설정하고 흔히 하는 실수는 주인에는 값을 입력하지 않고 주인이 아닌 곳에만 입력하는 것이다. DB에 외래 키 값이 정상적이지 않다면 이것을 의심할 것.
+>
+
+## 5.6.1 순수한 객체까지 고려한 양방향 연관관계
+
+> 객체 관점에서 양쪽 방향 모두 값을 입력해주는 것이 안전하다.
+>
+>
+> 위의 5.3.2에서 한 것처럼 Member, Team 양쪽 다 데이터를 넣어주어야 진짜 양뱡향 연관관계라 할 수 있다. → Member에서 검색하든 Team에서 검색하든 같은 결과가 나옴
+>
+
+입력 일부 수정
+
+```java
+public static void testSave(EntityManager em) {
+    //
+    //팀1 저장
+    Team team1 = new Team("team1", "팀1");
+
+    //회원1
+    Member member1 = new Member("member1", "회원1", team1);
+    em.persist(member1);
+    //회원2
+    Member member2 = new Member("member2", "회원2", team1);
+    em.persist(member2);
+		
+		//team에 Member의 데이터들을 추가해주었다
+    team1.getMembers().add(member1);
+    team1.getMembers().add(member2);
+    em.persist(team1);
+
+}
+```
+
+## 5.6.2 연관관계 편의 메소드
+
+> 위처럼 `member.set(team1);`(나는 생성자로 대체)  `team1.getMembers().add(member1);` 를 각각 호출하다 보면 실수로 둘 중 하나만 호출해서 양방향이 깨질 수 있다.
+>
+
+이럴 때는 Member클래스의 setTeam()을 수정해서 사용하는 것이 안전하다.
+
+```java
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+public class Member {
+    //
+    @Id
+    @Column(name = "MEMBER_ID")
+    private String id;
+
+    private String username;
+
+    //연관관계 매핑
+    @ManyToOne
+    @JoinColumn(name = "TEAM_ID")
+    private Team team;
+		
+		//생성자 추가
+    public Member (String id, String username) {
+        //
+        this.id = id;
+        this.username = username;
+    }
+		
+		//setter수정
+    public void setTeam(Team team) {
+        //
+        this.team = team;
+        team.getMembers().add(this);
+    }
+}
+```
+
+수정 출력 로직
+
+```java
+public static void testSave2(EntityManager em) {
+    //
+    //팀1 저장
+    Team team1 = new Team("team1", "팀1");
+    em.persist(team1);
+    
+    //회원1
+    Member member1 = new Member("member1", "회원1");
+    member1.setTeam(team1);
+    em.persist(member1);
+    //회원2
+    Member member2 = new Member("member2", "회원2");
+    member2.setTeam(team1);
+    em.persist(member2);
+}
+```
+
+## 5.6.3 연관관계 편의 메소드 작성 시 주의사항
+
+> team을 변경하는 경우 기존의 관계가 제거되지 않는다 → 제거 코드를 추가해주어야 함
+>
+
+```java
+//setter수정
+    public void setTeam(Team team) {
+        //
+        //기존 관계 제거
+        if (this.team != null) {
+            this.team.getMembers().remove(this);
+        }
+        this.team = team;
+        team.getMembers().add(this);
+    }
+```
+
+<aside>
+❗ 사실 teamA → member1 관계가 제거되지 않아도 문제는 없음
+
+Team.members는 연관관계의 주인이 아니기 때문
+
+또한 새로운 영속성 컨텍스트에서 teamA를 조회해서 `teamA.getMembers()`를 호출해도 외래 키에는 관계가 끊어져 있으므로 조회되지 않는다.
+
+다만 관계를 변경하고 영속성 컨텍스트가 살아있는 상태라면 `teamA.getMembers()`를 실행할 경우 member1이 조회되어버린다.
+
+</aside>
+
+# 5.7 정리
+
+> 양방향은 단방향과 비교해서 반대방향으로 객체 그래프 탐색 기능을 추가 한 것 뿐
+>
+>
+> 객체 그래프 탐색이 필요할 때 양방향을 사용하도록 한다.
+>
+
+<aside>
+❗ 연관관계의 주인은 외래 키의 위치와 관련해서 정해야지 비즈니스 중요도로 접근해서는 안된다.
+
+또한 양방향 매핑 시 무한루프를 주의할 것 - 서로를 참조할 수 있기 때문이다.
+
+</aside>
