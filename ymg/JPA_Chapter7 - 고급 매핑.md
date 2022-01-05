@@ -425,6 +425,9 @@ public static void findParent(EntityManager em) {
 
 **자식 클래스 추가**
 
+> 부모의 기본 키 컬림이 복합 키 이므로 자식 테이블의 외래 키도 복합키이다.
+>
+
 ```java
 @Getter
 @Setter
@@ -444,3 +447,489 @@ public class Child {
     private Parent parent;
 }
 ```
+
+### `@EmbeddedId`
+
+> @IdClass보다 더 객체지향적인 방법
+>
+
+예제 코드는 중복을 피하기 위해 앞에 Em을 붙였다.
+
+*`Parent`*
+
+> `Parent`엔티티에서 식별자 클래스를 직접 사용하고 `@EmbeddedId`어노테이션을 사용하면 된다.
+>
+
+```java
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+public class EmParent {
+    //
+    @EmbeddedId
+    private EmParentId id;
+    private String name;
+}
+```
+
+*`ParentId`*
+
+> `@IdClass`와는 다르게 `@EmbeddedId`를 적용한 식별자 클래스는 기본 키를 직접 매핑한다.
+>
+
+```java
+@Getter
+@Setter
+@NoArgsConstructor
+@EqualsAndHashCode
+@Embeddable
+public class EmParentId implements Serializable {
+    //
+    @Column(name = "PARENT_ID1")
+    private String id1;
+    @Column(name = "PARENT_ID2")
+    private String id2;
+}
+```
+
+<aside>
+💡 `@EmbeddedId`를 적용한 식별자 클래스의 조건
+
+- `@Embeddable` 어노테이션을 붙여주어야 한다.
+- *`Serializable`* 인터페이스를 구현해야 한다.
+- equals, hashCode를 구현해야 한다. → *`@EqualsAndHashCode`*
+- 기본 생성자가 있어야 한다. → *`@NoArgsConstructor`*
+- 식별자 클래스는 public이어야 한다.
+</aside>
+
+저장 코드
+
+```java
+public static void saveEmbedded(EntityManager em) {
+    //
+    EmParent parent = new EmParent();
+    EmParentId parentId = new EmParentId("myId1", "myId2");
+    parent.setId(parentId);
+    parent.setName("parentName");
+    em.persist(parent);
+}
+```
+
+> 실행 쿼리
+>
+>
+> ![img.png](img.png)
+>
+
+조회 코드
+
+```java
+public static void findemParent(EntityManager em) {
+    //
+    EmParentId parentId = new EmParentId("myId1", "myId2");
+    EmParent parent = em.find(EmParent.class, parentId);
+    System.out.println(parent.getId().getId1());
+    System.out.println(parent.getId().getId2());
+    System.out.println(parent.getName());
+}
+```
+
+### 복합 키와 `equals()`, `hashCode()`
+
+> 영속성 컨텍스트는 엔티티의 식별자를 키로 사용해서 엔티티를 관리한다.
+>
+>
+> 식별자를 비교할 때 equals(), hashCode()를 사용한다.
+>
+> ⇒ 식별자의 동등성(equals비교)가 지켜지지 않으면 예상과 다른 엔티티가 조회되거나 엔티티를 찾을 수 없는 등의 문제가 발생한다.
+>
+> ⇒ `equals()`, `hashCode()`를 필수로 구현해야 한다.
+>
+
+<aside>
+💡 참고
+
+복합 키에는 @GenerateValue를 사용할 수 없다
+
+</aside>
+
+## 7.3.3 복합 키: 식별 관계 매핑
+
+![img_2.png](img_2.png)
+
+> 부모, 자식, 손자까지 계속 기본 키를 전달하는 식별 관계
+>
+
+### `@IdClass`와 식별 관계
+
+*`Parent`*
+
+```java
+@Getter
+@Setter
+@Entity
+public class Parent {
+    //
+    @Id
+    @Column(name = "PARENT_ID")
+    private String id1; //ParentId.id1과 연결
+    private String name;
+}
+```
+
+*`Child`*
+
+```java
+@Getter
+@Setter
+@Entity
+@IdClass(ChildId.class)
+public class Child {
+    //
+    @Id
+    @ManyToOne
+    @JoinColumn(name = "PARENT_ID")
+    private Parent parent;
+
+    @Id
+    @Column(name = "CHILD_ID")
+    private String childId;
+
+    private String name;
+}
+```
+
+*`ChildId`*
+
+```java
+@Getter
+@Setter
+@EqualsAndHashCode
+public class ChildId implements Serializable {
+    //
+    private String parent; // Child.parent 매핑
+    private String childId; // Child.childId 매핑
+}
+```
+
+*`GrandChild`*
+
+```java
+@Getter
+@Setter
+@Entity
+public class GrandChild {
+    //
+    @Id
+    @ManyToOne
+    @JoinColumns ({
+            @JoinColumn (name = "PARENT_ID"),
+            @JoinColumn (name = "CHILD_ID")
+    })
+    private Child child;
+
+    @Id
+    @Column(name = "GRANDCHILD_ID")
+    private String id;
+
+    private String name;
+}
+```
+
+*`GrandChildId`*
+
+```java
+@Getter
+@Setter
+@EqualsAndHashCode
+public class GrandChildId implements Serializable {
+    //
+    private ChildId childId; // GrandChild.parent 매핑
+    private String id;       // GrandChild.id 매핑
+}
+```
+
+> 식별 관계는 기본 키와 외래 키를 같이 매핑해야 한다.
+>
+>
+> 따라서 식별자 매핑인 `@Id`와 연관관계 매핑인 `@ManyToOne`을 같이 사용하면 된다.
+>
+> ```java
+> @Id // => 기본 키 매핑
+> @ManyToOne // => 외래 키 매핑
+> 
+> @JoinColumn(name = "PARENT_ID")
+> private Parent parent;
+> ```
+>
+
+### `@EmbeddedId`와 식별 관계
+
+*`Parent`*
+
+```java
+@Getter
+@Setter
+@Entity
+public class EmParent {
+    //
+    @Id
+    @Column(name = "PARENT_ID")
+    private String id;
+    private String name;
+}
+```
+
+*`Child`*
+
+```java
+@Getter
+@Setter
+@Entity
+@IdClass(ChildId.class)
+public class Child {
+    //
+    @Id
+    @ManyToOne
+    @JoinColumn(name = "PARENT_ID")
+    private Parent parent;
+
+    @Id
+    @Column(name = "CHILD_ID")
+    private String childId;
+
+    private String name;
+}
+```
+
+*`ChildId`*
+
+```java
+@Getter
+@Setter
+@EqualsAndHashCode
+@Embeddable
+public class EmChildId implements Serializable {
+    //
+    private String parentId; //@MapsId("parentID")로 매핑
+
+    @Column(name = "CHILD_ID")
+    private String id;
+
+}
+```
+
+*`GrandChild`*
+
+```java
+@Getter
+@Setter
+@Entity
+public class EmGrandChild {
+    //
+    @EmbeddedId
+    private EmGrandChildId id;
+
+    @MapsId("childId")
+    @ManyToOne
+    @JoinColumns({
+            @JoinColumn(name = "PARENT_ID"),
+            @JoinColumn(name = "CHILD_ID")
+    })
+    private EmChild child;
+    private String name;
+}
+```
+
+*`GrandChildId`*
+
+```java
+@Getter
+@Setter
+@EqualsAndHashCode
+public class EmGrandChildId implements Serializable {
+    //
+    private EmChildId childId; //@MapsId("childId") 로 매핑
+
+    @Column(name = "GRANDCHILD_ID")
+    private String id;
+}
+```
+
+> `@EmbeddedId` 로 식별 관계를 구성할 때는 @MapsId를 사용해야 한다.
+>
+>
+> Child엔티티의 parent 필드 확인
+>
+> ```java
+> @Id
+> @ManyToOne
+> @JoinColumn(name = "PARENT_ID")
+> private Parent parent;
+> ```
+>
+> `@IdClass`와의 차이점은 `@Id`대신에 `@MapsId`를 사용한 점이다.
+>
+> `@MapsId`는 외래 키와 매핑한 연관관계를 기본 키에도 매핑하겠다는 뜻이다.
+>
+> `@MapsId`의 속성 값은 `@EmbeddedId`를 사용한 식별자 클래스의 기본 키 필드를 지정하면 된다.
+>
+
+## 7.3.4 비식별 관계로 구성
+
+![img_3.png](img_3.png)
+
+> 식별 관계와 비교하면 매핑, 코드가 단순하다. 또한 복합 키가 없으므로 복합 키 클래스를 만들지 않아도 된다.
+>
+
+*`Parent`*
+
+```java
+@Getter
+@Setter
+@Entity
+public class Parent {
+    //
+    @Id
+    @GeneratedValue
+    @Column(name = "PARENT_ID")
+    private Long id;
+    private String name;
+}
+```
+
+*`Child`*
+
+```java
+@Getter
+@Setter
+@Entity
+public class Child {
+    //
+    @Id
+    @GeneratedValue
+    @Column(name = "CHILD_ID")
+    private Long id;
+    private String name;
+
+    @ManyToOne
+    @JoinColumn(name = "PARENT_ID")
+    private Parent parent;
+}
+```
+
+*`GrandChild`*
+
+```java
+@Getter
+@Setter
+@Entity
+public class GrandChild {
+    //
+    @Id
+    @GeneratedValue
+    @Column(name = "GRANDCHILD_ID")
+    private Long id;
+    private String name;
+
+    @ManyToOne
+    @JoinColumn(name = "CHILD_ID")
+    private Child child;
+}
+```
+
+## 7.3.5 일대일 식별 관계
+
+![img_4.png](img_4.png)
+
+> 일대일 식별 관계는 자식 테이블의 기본 키 값으로 부모 테이블의 기본 키 값만 사용한다.
+>
+>
+> 기본 키가 복합 키가 아니면 자식 테이블의 기본 키는 복합 키로 구성하지 않아도 된다.
+>
+
+*`Board`*
+
+```java
+@Getter
+@Setter
+@Entity
+public class Board {
+    //
+    @Id
+    @GeneratedValue
+    @Column(name = "BOARD_ID")
+    private Long id;
+
+    private String title;
+
+    @OneToOne(mappedBy = "board")
+    private BoardDetail boardDetail;
+}
+```
+
+*`BoardDetail`*
+
+```java
+@Getter
+@Setter
+@Entity
+public class BoardDetail {
+    //
+    @Id
+    private Long boardId;
+
+    @MapsId // BoardDetail.boardId매핑
+    @OneToOne
+    @JoinColumn(name = "BOARD_ID")
+    private Board board;
+
+    private String content;
+}
+```
+
+## 7.3.6 식별, 비식별 관계의 장단점
+
+### DB 관점
+
+> DB 설계 관점에서는 아래의 이유로 식별 관계보다는 비식별 관계를 더 선호한다.
+>
+- 식별 관계는 부모 테이블의 기본 키를 자식 테이블로 전파하면서 자식 테이블의 기본 키 컬럼이 점점 늘어난다
+- 식별 관계는 2개 이상의 컬럼을 합해서 복합 기본 키를 만들어야 하는 경우가 많다.
+- 식별 관계를 사용할 때 기본 키로 비즈니스 의미가 있는 자연 키 컬럼을 조합하는 경우가 많다.
+
+  반면 비식별 관계의 기본 키는 비즈니스와 전혀 관계없는 대리 키를 주로 사용한다.
+
+  비즈니스의 요구사항은 언젠가 변하는데, 식별 관계의 자연 키 컬럼들이 자식에 손자까지 전파되면 변경하기 힘들다(Cube, Card의 이름을 바꾼다고 생각하면?)
+
+- 식별 관계는 부모 테이블의 기본 키를 자식 테이블의 기본 키로 사용 ⇒ 테이블 구조가 유연하지 못하다.
+
+### 객체 관점
+
+> 객체 관계 매핑의 관점에서는 아래의 이유로 비식별 관계를 더 선호한다.
+>
+- 식별 관계는 2개 이상의 컬럼을 묶은 복합 기본 키를 사용한다(일대일 제외) → 복합 키 클래스 필요 → 힘듦
+- 비식별 관계는 주로 대리 키를 기본 키로 사용하는데, JPA는 `@GenerateValue`로 편하게 생성할 수 있다.
+
+### 식별 관계만의 관점
+
+> 반면 식별 관계가 가지는 장점도 있다.
+>
+- 기본 키 인덱스 활용이 용이
+- 상위 테이블들의 기본 키 컬럼을 자식, 손자가 가지고 있음
+
+  → 특정 상황에 조인 없이 하위 테이블만으로도 검색 가능
+
+
+### 정리
+
+> **가능하면 비식별 관계 사용, 기본 키는 Long 타입의 대리 키 사용**
+>
+>
+> Integer는 20억 / Long은 약920경 → 훨씬 안전
+>
+> 선택적 비식별 보다는 필수적 비식별 관계가 추천
+>
+> → 필수적 비식별 관계는 NOT NULL로 항상 관계가 있다는 것을 보장 ⇒ **내부 조인으로 해결가능**
+>
