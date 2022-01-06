@@ -519,7 +519,7 @@ public static void saveEmbedded(EntityManager em) {
 > 실행 쿼리
 >
 >
-> ![img.png](img.png)
+> ![img.png](Chapter7_2_pic/img.png)
 >
 
 조회 코드
@@ -556,7 +556,7 @@ public static void findemParent(EntityManager em) {
 
 ## 7.3.3 복합 키: 식별 관계 매핑
 
-![img_2.png](img_2.png)
+![img_2.png](Chapter7_2_pic/img_2.png)
 
 > 부모, 자식, 손자까지 계속 기본 키를 전달하는 식별 관계
 >
@@ -778,7 +778,7 @@ public class EmGrandChildId implements Serializable {
 
 ## 7.3.4 비식별 관계로 구성
 
-![img_3.png](img_3.png)
+![img_3.png](Chapter7_2_pic/img_3.png)
 
 > 식별 관계와 비교하면 매핑, 코드가 단순하다. 또한 복합 키가 없으므로 복합 키 클래스를 만들지 않아도 된다.
 >
@@ -841,7 +841,7 @@ public class GrandChild {
 
 ## 7.3.5 일대일 식별 관계
 
-![img_4.png](img_4.png)
+![img_4.png](Chapter7_2_pic/img_4.png)
 
 > 일대일 식별 관계는 자식 테이블의 기본 키 값으로 부모 테이블의 기본 키 값만 사용한다.
 >
@@ -932,4 +932,264 @@ public class BoardDetail {
 > 선택적 비식별 보다는 필수적 비식별 관계가 추천
 >
 > → 필수적 비식별 관계는 NOT NULL로 항상 관계가 있다는 것을 보장 ⇒ **내부 조인으로 해결가능**
+
+# 7.4 조인 테이블
+
+DB데이터 베이스 테이블의 연관관계를 설계하는 방법은 크게 두가지다
+
+- 조인 컬럼 사용
+
+  ![img_5.png](Chapter7_2_pic/img_5.png)
+
+  > 각각의 테이블에 데이터를 등록 했다가 회원이 원할 때 사물함을 선택 할 수 있다고 가정
+  >
+  >
+  > 회원이 사물함을 사용하기 전에는 아직 둘 사이에 관계가 없으므로 LOCKER_ID 외래 키에 null을 입력해두어야 한다. ⇒ 외래 키에 null을 허용 하는 관계를 **선택적 비식별 관계**라 한다.
+  >
+
+  ![img_6.png](Chapter7_2_pic/img_6.png)
+
+  > 선택적 비식별 관계는 외래 키에 null을 허용하므로 조인 시 **외부 조인**을 사용해야 한다
+  >
+  >
+  > 내부 조인을 사용하면 사물함과 관계가 없는 회원은 조회 되지 않는다.
 >
+
+- 조인 테이블 사용
+
+  ![img_7.png](Chapter7_2_pic/img_7.png)
+
+  > 조인 테이블이라는 별도의 테이블을 사용해서 연관관계를 관리한다.
+  >
+  >
+  > 조인 테이블에서 두 테이블의 외래 키를 가지고 연관관계를 관리한다.
+  >
+
+  ![img_8.png](Chapter7_2_pic/img_8.png)
+
+  > member테이블은 건드릴 필요 없이 member에서 locker를 등록하고 싶다면 조인 테이블만 수정하면 된다.
+  >
+  >
+  > 하지만 member, locker테이블을 조인 하려면 **조인 테이블까지 함께 조인해주어야 하는 단점**이 있다.
+>
+- 확인 필요
+
+  ![img_9.png](Chapter7_2_pic/img_9.png)
+
+  아래가 조인 테이블 인줄 알았지만 코드 상으로는 *`@ElementCollection`, `@CollectionTable`*을 사용했다.
+
+  일대다 경우에 사용되는 것인듯
+
+  https://medium.com/nerd-for-tech/elementcollection-vs-onetomany-in-hibernate-7fb7d2ac00ea
+
+  ![img_10.png](Chapter7_2_pic/img_10.png)
+
+
+## 7.4.1 일대일 조인 테이블
+
+> 일대일 관계를 만들려면 조인 테이블의 외래 키 컬럼 각각에 총 2개의 유니크 제약 조건을 걸어야 한다.
+>
+
+*`Parent`*
+
+```java
+@Getter
+@Setter
+@Entity
+public class Parent {
+    //
+    @Id
+    @GeneratedValue
+    @Column(name = "PARENT_ID")
+    private long id;
+    private String name;
+
+    @OneToOne
+    @JoinTable(name = "PARENT_CHILD",
+        joinColumns = @JoinColumn(name = "PARENT_ID"),
+        inverseJoinColumns = @JoinColumn(name = "CHILD_ID"))
+    private List<Child> children = new ArrayList<>();
+}
+```
+
+*`Child`*
+
+```java
+@Getter
+@Setter
+@Entity
+public class Child {
+    //
+    @Id
+    @GeneratedValue
+    @Column(name = "CHILD_ID")
+    private Long id;
+    private String name;
+}
+```
+
+### *`@JoinTable`*속성
+
+- `name` : 매핑할 조인 테이블 이름
+- `joinColumns` : 현재 엔티티를 참조하는 외래 키
+- `inverseJoinColumns` : 반대 방향 엔티티를 참조하는 외래 키
+
+## 7.4.2 일대다 조인 테이블
+
+> 일대다 관계를 만드려면 조인 테이블의 컬럼 중 다(N)과 관련된 컬럼인 CHILD_ID에 유니크 제약 조건을 걸어야 한다.
+>
+
+*`Parent`*
+
+```java
+@Getter
+@Setter
+@Entity
+public class Parent {
+    //
+    @Id
+    @GeneratedValue
+    @Column(name = "PARENT_ID")
+    private long id;
+    private String name;
+
+    @OneToMany
+    @JoinTable(name = "PARENT_CHILD",
+        joinColumns = @JoinColumn(name = "PARENT_ID"),
+        inverseJoinColumns = @JoinColumn(name = "CHILD_ID"))
+    private List<Child> children = new ArrayList<>();
+}
+```
+
+> 다대일은 Child쪽에 @JoinTable을 걸어준다
+>
+
+*`Parent`*
+
+```java
+@Getter
+@Setter
+@Entity
+public class Parent {
+    //
+    @Id
+    @GeneratedValue
+    @Column(name = "PARENT_ID")
+    private long id;
+    private String name;
+
+    @OneToMany(mappedBy = "parent")
+    private List<Child> children = new ArrayList<>();
+}
+```
+
+*`Child`*
+
+```java
+@Getter
+@Setter
+@Entity
+public class Child {
+    //
+    @Id
+    @GeneratedValue
+    @Column(name = "CHILD_ID")
+    private Long id;
+    private String name;
+
+    @ManyToOne(optional = false)
+    @JoinTable(name = "PARENT_CHILD",
+            joinColumns = @JoinColumn(name = "CHILD_ID"),
+            inverseJoinColumns = @JoinColumn(name = "PARENT_ID"))
+    private Parent parent;
+}
+```
+
+## 7.4.4 다대다 조인 테이블
+
+> 다대다 관계는 조인 테이블의 두 컬럼을 합해서 하나의 복합 유니크 제약조건을 걸어야 한다.
+>
+
+*`Parent`*
+
+```java
+@Getter
+@Setter
+@Entity
+public class Parent {
+    //
+    @Id
+    @GeneratedValue
+    @Column(name = "PARENT_ID")
+    private long id;
+    private String name;
+
+    @ManyToMany
+    @JoinTable(name = "PARENT_CHILD",
+        joinColumns = @JoinColumn(name = "PARENT_ID"),
+        inverseJoinColumns = @JoinColumn(name = "CHILD_ID"))
+    private List<Child> children = new ArrayList<>();
+}
+```
+
+*`Child`*
+
+```java
+@Getter
+@Setter
+@Entity
+public class Child {
+    //
+    @Id
+    @GeneratedValue
+    @Column(name = "CHILD_ID")
+    private Long id;
+    private String name;
+}
+```
+
+# 7.5 엔티티 하나에 여러 테이블 매핑
+
+> @SecondaryTable을 사용하면 한 엔티티에 여러 테이블을 매핑 할 수 있다.
+>
+
+![img_11.png](Chapter7_2_pic/img_11.png)
+
+```java
+@Getter
+@Setter
+@Entity
+@Table(name = "BOARD")
+**@SecondaryTable(name = "BOARD_DETAIL",
+    pkJoinColumns = @PrimaryKeyJoinColumn(name = "BOARD_DETAIL_ID"))**
+public class Board {
+    //
+    @Id
+    @GeneratedValue
+    @Column(name = "BOARD_ID")
+    private Long id;
+
+    private String title;
+
+    **@Column(table = "BOARD_DETAIL")**
+    private String content;
+}
+```
+
+### *`@SecondaryTable`* 속성
+
+- `@SecondaryTable.name` : 매핑할 다른 테이블의 이름
+- `@SecondaryTable.pkJoinColums` : 매핑할 다른 테이블의 기본 키 컬럼 속성
+
+```java
+@Column(table = "BOARD_DETAIL")
+private String content;
+```
+
+> content필드는 `BOARD_DETAIL` 테이블의 컬럼에 매핑했다.
+>
+>
+> 테이블을 지정하지 않으면 기본 테이블인 `BOARD`에 매핑된다.
+>
+
+**⇒ 두 테이블을 하나의 엔티티에 매핑하는 것 보다는 테이블 당 엔티티를 각각 만드는 것을 권장한다. - 최적화가 힘들기 때문이다**
