@@ -86,9 +86,7 @@ public class Member {
 
 - 양방향의 장점은 <u>반대방향으로 객체</u> <u>그래프 탐색 기능이 추가된 것 뿐, 단방향과 비교해서 복잡</u>하다. 그러므로 객체에서 양방향 연관관계를 사용하려면 로직을 견고하게 짜야 한다.
 
-- 
-
-- 
+  
 
   
 
@@ -180,6 +178,102 @@ public class CompositeId implements Serializable {
 중요한 사항은 `equals()`와 `hashCode`()를 오버라이드해야 한다는 점이다.
 
 왜냐면 **영속성 컨텍스트는 엔티티의 식별자(@Id)를 key로 사용해서 엔티티를 관리하기 때문이다. 그리고 식별자를 비교할 때 equals()와 hashCode() 를 사용한다. 그러므로  식별자의 동등성이 보장되지 않으면, 예상과 다른 엔티티가 조회되거나 엔티티를 찾을 수 없는 등 영속성 컨텍스트가 엔티티를 관리하는 데 심각한 문제가 발생**하게 되기 때문이다.
+
+
+
+아래는 테스트해본 코드이다.
+
+테스트용 엔티티
+
+```java
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+public class CompositeKeyTestEntity {
+    //
+    @EmbeddedId
+    private CompositeKey id;
+    private String name;
+}
+```
+
+
+
+hashCode와 equals메서드를 오버라이드했을 때 
+
+```java
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import javax.persistence.Embeddable;
+import java.io.Serializable;
+import java.util.Objects;
+
+@Getter
+@Setter
+@Embeddable
+@NoArgsConstructor
+@AllArgsConstructor
+public class CompositeKey implements Serializable {
+    //
+    private String id1;
+    private String id2;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        else if (o != null && this.getClass() == o.getClass()) {
+            CompositeKey that = (CompositeKey) o;
+            return id1.equals(that.id1) && id2.equals(that.id2);
+        } else {
+            return false;
+        }
+
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id1, id2);
+    }
+}
+
+```
+
+오버라이드하고 나니 같은 키로 인식하여 테스트코드를 실행시켜보니 update문을 실행하는 것을 확인할 수 있었다.
+
+```java
+  @Test
+    void composite_key_test() {
+        //
+        CompositeKeyTestEntity ckte = new CompositeKeyTestEntity();
+        ckte.setId(new CompositeKey("id1", "id2"));
+        ckte.setName("first");
+        compositeKeyTestRepository.save(ckte);
+
+        CompositeKeyTestEntity ckte2 = new CompositeKeyTestEntity();
+        CompositeKey ck2 = new CompositeKey("id1", "id2");
+        ckte2.setId(ck2);
+        ckte2.setName("second");
+        compositeKeyTestRepository.save(ckte2);
+
+        CompositeKeyTestEntity result = compositeKeyTestRepository.findById(new CompositeKey("id1", "id2")).orElse(null);
+        System.out.println("result -> " + result.getName());
+
+
+    }
+```
+
+이렇게 복합키를 생성해주는 것을 확인할 수 있다.![image-20220106193302443](image/image-20220106193302443.png)
+
+두번째 save()시에 기본키가 같으므로(equals()오버라이드 통해 같은 키로 인식) update문을 발생시키는 것을 볼 수 있다.![image-20220106194430799](image/image-20220106194430799.png)![image-20220106194644560](image/image-20220106194644560.png)
+
+
+
+나중에 equals, hashCode를 지우고 테스트코드를 실행해봤는데, 그럼에도 여전히 update문이 실행되는 이유는 뭘까??
 
 
 
