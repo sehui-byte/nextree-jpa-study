@@ -2,7 +2,7 @@
 
 
 
-## Chapter 5 - 7
+# Chapter 5 - 7
 
 5장,6장은 **연관관계 매핑**에 대한 부분을 다루고, 7장은 **고급매핑**에 대해 소개하는데 정리하다보니 연관도가 높아 한꺼번에 정리하는게 보기 좋을 것 같아 한 파일에 정리하게 되었다.
 
@@ -20,7 +20,7 @@
 
 
 
-### 객체 연관관계와 테이블 연관관계의 차이
+## 객체 연관관계와 테이블 연관관계의 차이
 
 - <u>참조를 통한 연관관계는 언제나 단방향</u>이다. 그러므로 **객체에서는** 양방향 연관관계란 존재하지 않고, 양방향처럼 보이도록 하기 위해 단방향 연관관계를 양쪽에 만드는 방법이 있다. 즉 **서로 다른 단방향 연관관계가 2개 존재**하게 되는 것이다.
   - 객체는 참조를 사용해서 연관관계를 탐색할 수 있고, 이러한 것을 "**객체 그래프 탐색**"이라고 한다.
@@ -92,18 +92,29 @@ public class Member {
 
 ---
 
-### 식별관계와 비식별관계 (7장)
+## 식별관계와 비식별관계 (7장)
 
 - **식별관계 (Identifying relationship)** : 부모테이블의 기본키를 내려받아서 자식테이블의 기본키 + 외래키로 사용하는 관계.
-- 식별관계는 실선으로 나타낸다.
+  - 식별관계는 실선으로 나타낸다.
+  - 식별관계는 2개 이상의 컬럼을 합해서 복합키를 만들어야 하는 경우가 많다.
+
+
+
 - 비식별관계 (Non-identifying relationship)
+
   - **필수적 비식별관계 (mandatory)** : 외래키에 nul 비허용
+
   - **선택적 비식별관계 (optional)** : 외래키에 null허용, 연관관계를 맺을지 말지 선택할 수 있다.
+
+  - 비식별관계의 기본키는 주로 비즈니스와 전혀 관계 없는 대리키를 사용한다. 비즈니스 요구사항은 시간이 지남에 따라 언젠가는 변한다. 식별관계의 자연키(natural key) 컬럼들이 자식에 손자까지 전파되면 변경하기 힘들다.
+
+    (자연키 : 비즈니스 모델에서 자연스레 나오는 속성으로 정한 키)
+
 - 최근에는 비식별관계를 주로 사용하고 꼭 필요한 곳에만 식별관계를 사용하는 추세라고 한다.
 
 
 
-*이 식별관계와 비식별관계에 대해 책에 내용이 조금 부족한 것 같아서 (아무래도 좀더 db관련 부분이니까) 참고자료를 보고, 내용을 추가한다. 공부를 하면서 참고한 자료들은 목차 최하단에 모아두었다.* *아래 이미지는 타 블로그에서 가져온 내용인데, 잘 정리되어있는 듯하다.*
+*이 식별관계와 비식별관계에 대해 참고자료를 보고, 내용을 추가한다. 공부를 하면서 참고한 자료들은 목차 최하단에 모아두었다.* *아래 이미지는 타 블로그에서 가져온 내용인데, 잘 정리되어있는 듯하다.*
 
 식별관계의 경우, 부모테이블의 pk가 자식테이블의 fk이자 pk로 사용되어, 자식테이블에 row(data) 추가할 때마다 부모테이블의 pk가 (자식테이블의 fk이자 pk) 존재해야한다. 그렇지 않으면 자식테이블에 insert할 수 없게 된다.  **즉 부모테이블에 자식테이블이 종속된다.**
 
@@ -119,6 +130,7 @@ public class Member {
 > <식별관계의 단점>
 >
 > - 요구사항이 변경되었을 경우 구조변경이 어렵다.
+> - 식별관계는 부모 테이블의 기본키를 자식테이블로 전파하면서 자식 테이블의 기본키 컬럼이 늘어난다. 결국 조인할 때 SQL이 복잡해지고, 기본키 인덱스가 불필요하게 커질 수 있다.
 
 <img src="image/image-20220109172951177.png" alt="image-20220109172951177" style="zoom: 50%;" />
 
@@ -154,7 +166,7 @@ public class Member {
 
 
 
-### 복합 키 (composite key)
+## 복합 키 (composite key)
 
 ​	복합키(6,7장) 와(새로운 값 타입 정의 (9장)
 
@@ -339,6 +351,77 @@ public class CompositeKey implements Serializable {
 
 ![image-20220106200641508](image/image-20220106200641508.png)
 
+
+
+---
+
+
+
+## @MappedSuperclass
+
+- 테이블과 매핑되지 않고, 매핑 정보를 상속할 목적으로 사용하는 어노테이션.
+- 객체들이 주로 사용하는 공통 매핑 정보를 정의한다.
+- 매핑 정보를 재정의 할 때 사용하는 어노테이션들 -> `@AttributeOverrides` , `@AttributeOverride`, `@AssociationOverride` , `@AssociationOverrides`
+
+
+
+- BaseEntity
+
+  ```java
+  @Getter@Setter
+  @MappedSuperclass
+  public abstract class BaseEntity {
+      //
+      @Id
+      @GeneratedValue
+      protected Long id;
+      protected String name;
+      private String email;
+  
+      @Temporal(TemporalType.TIMESTAMP)
+      private Date registeredDate;
+      @Temporal(TemporalType.TIMESTAMP)
+      private Date modifiedDate;
+  
+  
+  }
+  ```
+
+  ​	아래 Teacher 클래스는 BaseEntity를 상속받는다.
+
+```java
+@Table
+@Entity
+@AllArgsConstructor
+@Getter
+@Setter
+public class Teacher extends BaseEntity {
+    //
+    @Enumerated(EnumType.STRING)
+    private Subject subject;
+
+    public Teacher() {
+        super();
+    }
+}
+
+```
+
+
+
+아래는 Teacher 데이터 생성 테스트코드
+
+```java
+  @Test
+    void insertTeacher() {
+        //
+        Teacher teacher = new Teacher(Subject.Math);
+        teacherRepository.save(teacher);
+    }
+```
+
+![image-20220109205629840](image/image-20220109205629840.png)
+
 ---
 
 
@@ -360,3 +443,5 @@ public class CompositeKey implements Serializable {
 - https://velog.io/@jch9537/DATABASE-%EC%8B%9D%EB%B3%84%EA%B3%BC-%EB%B9%84%EC%8B%9D%EB%B3%84-%EA%B4%80%EA%B3%84
 
 - https://velog.io/@lzhxxn/ANSI-SQL-%EC%95%8C%EC%95%84%EB%B3%B4%EC%9E%90
+
+-  https://1minute-before6pm.tistory.com/17
