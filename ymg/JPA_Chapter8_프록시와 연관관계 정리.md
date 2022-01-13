@@ -820,3 +820,52 @@ public enum CascadeType {
     DETACH
 }
 ```
+
+# 8.5 고아 객체
+
+> 부모 엔티티와 연관관계가 끊어진 자식 엔티티를 자동으로 삭제하는 기능을 **고아 객체(ORPHAN) 제거**라 한다.
+>
+>
+> 이 기능을 사용해서 부모 엔티티의 컬렉션에서 자식 엔티티의 참조만 제거하면 자식 엔티티가 자동으로 삭제되도록 한다.
+>
+
+### 기능 설정
+
+*`Parent`*
+
+```sql
+@Entity
+@NoArgsConstructor
+@AllArgsConstructor
+public class Parent {
+    //
+    @Id
+    @GeneratedValue
+    private long id;
+
+    @OneToMany(mappedBy = "parent", orphanRemoval = true)
+    private List<Child> children  = new ArrayList<>();
+}
+```
+
+### 정리
+
+> 고아 객체 제거는 참조가 제거된 엔티티는 다른 곳에서 참조하지 않는 고아 객체로 보고 삭제하는 기능이다.
+>
+>
+> ⇒ 이 기능은 참조하는 곳이 하나일 때만 사용해야 한다. - 삭제한 엔티티를 다른 곳에서 참조하면 문제 발생
+>
+> ⇒ `@OneToOne`, `@OneToMany`에만 사용할 수 있다.
+>
+> 부모를 제거하면 자식은 고아가 된다. ⇒ 자식도 같이 제거 된다.
+>
+
+# 8.6 영속성 전이 + 고아 객체, 생명주기
+
+> `cascade = CascadeType`*,*`ALL,orphanRemoval = true`를 동시에 사용하면?
+>
+>
+> ⇒ 엔티티 스스로 생명주기 관리
+>
+> ⇒ 부모 엔티티를 통해 자식의 생명주기 관리 가능
+>
