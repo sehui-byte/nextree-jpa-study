@@ -26,6 +26,7 @@
     em.persist(member);
   ```
 - **detached(준영속 상태)**
+  
   - `em.detach()`를 호출하거나 `em.close()`로 영속성 컨텍스트를 닫아버리거나 `em.clear()`로 영속성 컨텍스트를 초기화해도 영속성 컨텍스트가 관리하던 영속 상태의 엔티티는 준영속 상태가 된다.
 
 ---
@@ -78,20 +79,3 @@ entity가 준영속 상태가 되면 위에 있는 영속성 컨텍스트가 제
 
 ### 참고자료
 - https://jobc.tistory.com/209
-
-# AnalysisFlow.findReviewSummary() 메소드 리뷰 내용
-
-
-
-```java
-ReviewSummaryRdo reviewSummaryRdo = new ReviewSummaryRdo();
-SurveySummary surveySummary = surveySummaryService.findSurveySummary(surveyCaseId);
-AnswerSummary answerSummary = surveySummary.getAnswerSummaries().get(0); // 1번째 문항 (Review type)
-reviewSummaryRdo.setAnswerSummary(answerSummary);
-```
-
-
-
-SurveySummary.answerSummaries 는 `transient`이다. Domain 클래스의 transient는 값을 관리하는 용도 아니라, 클래스 다이어그램에서 dependency 표시 등 관계 표현을 위해서 사용한다.
-그러므로, 위 코드에서 SurveySummary 조회 후 getAnswerSummaries() 호출 시 NullPointerException 발생.
-AnswerSummary는 별도로 조회해야 함.
