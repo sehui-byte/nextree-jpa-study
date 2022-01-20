@@ -43,6 +43,8 @@ JPA는 객체를 실제 사용하는 시점까지 DB조회를 지연하는 방�
 - 영속성 컨텍스트에 엔티티가 이미 있으면 DB를 조회할 필요가 없으므로 `EntityManager.getReference()`를 호출하더라도 프록시가 아닌, 실제 엔티티를 반환한다.
 - **영속성 컨텍스트의 도움을 받을 수 없는, 준영속 상태의 프록시를 초기화하면 문제가 발생**한다. 하이버네이트는 `LazyInitializationException`을 발생시킨다.
 - 엔티티를 프록시로 조회할 때 식별자(PK)값을 parameter로 전달하는데, **프록시 객체는 이 식별자 값을 보관**한다. 그러므로 식별자 값을 조회하는 `memger.getId()`를 호출해도 프록시를 초기화하지 않는다. 단 엔티티 접근방식을 `@Access(AccessType.PROPERTY)`로 설정했을 때만 해당된다. 접근방식을 `AccessType.FILED`로 설정하면 JPA는 `getId()`메서드가  `id`만 조회하는 메서드인지, 다른 필드까지 활용해서 어떤 일을 하는 메서드인지 알지 못하므로 프록시 객체를 초기화한다.
+  - 4장 참고하기. 
+  - https://stackoverflow.com/questions/13874528/what-is-the-purpose-of-accesstype-field-accesstype-property-and-access
 
 
 
